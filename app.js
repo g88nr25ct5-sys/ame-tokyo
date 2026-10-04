@@ -14,7 +14,7 @@ scene.addEventListener('wheel',e=>{e.preventDefault();scaleTo(zoom*Math.exp(-e.d
 const pointers=new Map();let gesture,tapStart=null,moved=false;
 scene.addEventListener('pointerdown',e=>{if(!entered)return;scene.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});gesture=null;tapStart={x:e.clientX,y:e.clientY};moved=pointers.size>1;wake();});
 scene.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;if(tapStart&&Math.hypot(e.clientX-tapStart.x,e.clientY-tapStart.y)>7)moved=true;const previous=pointers.get(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2){const [a,b]=[...pointers.values()];const distance=Math.hypot(a.x-b.x,a.y-b.y);if(gesture)scaleTo(zoom*distance/gesture,(a.x+b.x)/2,(a.y+b.y)/2);gesture=distance;}else{manual=true;if(image!==sceneImages.window){px+=e.clientX-previous.x;py+=e.clientY-previous.y;renderImage();}}});
-scene.addEventListener('pointerup',()=>{if(tapStart&&!moved&&pointers.size===1)panel($('panel').hidden);tapStart=null;});
+scene.addEventListener('pointerup',()=>{tapStart=null;});
 for(const name of ['pointerup','pointercancel','lostpointercapture'])scene.addEventListener(name,e=>{pointers.delete(e.pointerId);gesture=null;});
 scene.addEventListener('dblclick',e=>scaleTo(zoom>1?1:1.8,e.clientX,e.clientY));
 scene.addEventListener('keydown',e=>{if(['+','=','-','0','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();manual=true;if(e.key==='0')reset();else if(e.key==='+'||e.key==='=')scaleTo(zoom*1.15);else if(e.key==='-')scaleTo(zoom/1.15);else {px+=e.key==='ArrowLeft'?40:e.key==='ArrowRight'?-40:0;py+=e.key==='ArrowUp'?40:e.key==='ArrowDown'?-40:0;renderImage();}wake();}});
@@ -25,7 +25,7 @@ for(let i=0;i<count;i++){const d=drops[i];if(Math.min(2,Math.floor(d.depth*3))!=
 // Only these four user-selected recordings are used. No synthesized fallback.
 const AUDIO_FILES={environment:'assets/audio/rain-city-sachintempini.mp3',ambient1:'assets/audio/ambient-i-universfield.mp3',ambient2:'assets/audio/ambient-ii-universfield.mp3',jazz:'assets/audio/rainy-jazz-alex-morgan.mp3'};
 const audioMessages={environment:'',music:''};
-function audioStatus(channel,message){audioMessages[channel]=message;$('audioStatus').textContent=Object.values(audioMessages).filter(Boolean).join(' · ');}
+function audioStatus(channel,message){audioMessages[channel]=message;$('audioStatus').textContent=Object.values(audioMessages).filter(Boolean).join(' · ');if(channel==='environment')$('sound').textContent=!environmentOn?'环境音 关':message.includes('加载')?'环境音 加载中':message?'环境音 重试':'环境音 开';}
 function initAudio(){
  const ac=new (window.AudioContext||window.webkitAudioContext)();
  const master=ac.createGain(),limiter=ac.createDynamicsCompressor(),environment=ac.createGain(),music=ac.createGain();
@@ -85,7 +85,7 @@ async function unlockAudio(){
 }
 async function switchView(key){
  const request=++viewRequest,target=sceneImages[key];$('view').disabled=true;
- try{await target.decode();if(request!==viewRequest)return;image=target;document.querySelector('.hint').textContent=key==='window'?'按住拖动擦雾 · 轻触调节氛围':'轻触画面调节氛围 · 拖动探索';$('viewHint').textContent=key==='window'?'拖动擦雾 · 双指或滚轮靠近':'拖动探索 · 双指或滚轮靠近';scene.setAttribute('aria-label',key==='window'?'东京雨夜窗边，按住拖动擦去玻璃雾气':'东京雨夜，可缩放和拖动画面');zoom=1;px=py=0;manual=false;elapsed=0;resize();for(const item of Object.values(sceneImages))item.classList.toggle('active',item===target);const next=key==='window'?'城市全景':'窗边视角';$('view').textContent=key==='window'?'视角：窗边':'视角：城市';$('view').title='切换到'+next;$('view').setAttribute('aria-label','切换到'+next);}
+ try{await target.decode();if(request!==viewRequest)return;image=target;document.querySelector('.hint').textContent=key==='window'?'按住拖动擦雾 · 设置中调节声音':'拖动探索 · 设置中调节声音';$('viewHint').textContent=key==='window'?'拖动擦雾 · 双指或滚轮靠近':'拖动探索 · 双指或滚轮靠近';scene.setAttribute('aria-label',key==='window'?'东京雨夜窗边，按住拖动擦去玻璃雾气':'东京雨夜，可缩放和拖动画面');zoom=1;px=py=0;manual=false;elapsed=0;resize();for(const item of Object.values(sceneImages))item.classList.toggle('active',item===target);const next=key==='window'?'城市全景':'窗边视角';$('view').textContent=key==='window'?'视角：窗边':'视角：城市';$('view').title='切换到'+next;$('view').setAttribute('aria-label','切换到'+next);}
  catch{if(request===viewRequest)$('view').textContent='图片未加载，点击重试';}
  finally{if(request===viewRequest)$('view').disabled=false;}
 }
@@ -96,12 +96,13 @@ $('enter').onclick=async()=>{
  wake();setTimeout(()=>$('caption').style.display='none',6500);
 };
 $('sound').onclick=async()=>{
- environmentOn=!environmentOn;$('sound').textContent=environmentOn?'环境 ON':'环境 OFF';$('sound').setAttribute('aria-label',environmentOn?'关闭环境音':'开启环境音');$('sound').setAttribute('aria-pressed',String(environmentOn));
+ environmentOn=audioMessages.environment&&!audioMessages.environment.includes('加载')?true:!environmentOn;$('sound').textContent=environmentOn?'环境音 开':'环境音 关';$('sound').setAttribute('aria-label',environmentOn?'关闭环境音':'开启环境音');$('sound').setAttribute('aria-pressed',String(environmentOn));
  if(await unlockAudio())audio.setEnvironment(environmentOn);wake();
 };
 function panel(open){$('panel').hidden=!open;document.body.classList.toggle('panel-open',open);$('settings').setAttribute('aria-expanded',String(open));wake();if(open)$('close').focus();else $('settings').focus();}
 $('settings').onclick=()=>panel($('panel').hidden);$('close').onclick=()=>panel(false);$('reset').onclick=reset;
-$('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{$('fullscreen').textContent='请用浏览器全屏';}wake();};
+$('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen({navigationUI:'hide'});}catch{$('fullscreen').textContent='请用浏览器全屏';$('fullscreen').title='此浏览器不支持网页全屏，请使用浏览器菜单进入全屏';}wake();};
+document.addEventListener('fullscreenchange',()=>{$('fullscreen').textContent=document.fullscreenElement?'退出全屏':'全屏';});
 for(const id of ['amount','environmentVolume','musicVolume'])$(id).addEventListener('input',()=>{$(id+'Value').textContent=$(id).value;});
 for(const id of ['environmentVolume','musicVolume'])$(id).addEventListener('input',()=>audio?.levels());
 $('music').addEventListener('change',async()=>{const selection=$('music').value;if(await unlockAudio()){audio.levels();audio.setMusic(selection);}});

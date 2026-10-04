@@ -13,3 +13,5 @@
 .scene-image{position:absolute;max-width:none;will-change:transform;user-select:none;opacity:0;transition:opacity 1.6s ease;pointer-events:none}.scene-image.active{opacity:1}@media(prefers-reduced-motion:reduce){.scene-image{transition:none}}
 
 #condensation{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}#scene:has(#windowScene.active){cursor:default}
+
+.entered:not(.awake) footer{opacity:.62}.entered:not(.awake) #fullscreen{visibility:visible}#sound,#settings{text-shadow:0 1px 8px #000}
