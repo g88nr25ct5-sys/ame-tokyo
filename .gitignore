@@ -1,0 +1,10 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+node_modules/
+work/
+outputs/
+# 原始图片已经保留在 assets 中，不上传根目录的重复副本。
+/2.png
+/tokyo-rain.png
